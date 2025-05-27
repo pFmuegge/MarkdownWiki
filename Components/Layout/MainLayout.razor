@@ -1,0 +1,101 @@
+﻿@inherits LayoutComponentBase
+
+<RadzenComponents @rendermode="InteractiveServer" />
+
+<CascadingValue IsFixed="true" TValue="List<MenuItem>" Value="@_list" Name="MenuItems">
+    <CascadingValue IsFixed="true" TValue="Action<MenuItem>" Value="@ChangePath" Name="OnPathChange">
+        <CascadingValue IsFixed="false" TValue="MenuItem" Value="@_selectedValue" Name="MarkdownPath">
+            <RadzenLayout style="position: relative">
+                <RadzenHeader>
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0">
+                        <RadzenSidebarToggle Click="@(() => sidebarExpanded = !sidebarExpanded)" />
+                        <RadzenLabel Text="Header" />
+                    </RadzenStack>
+                </RadzenHeader>
+                <RadzenSidebar @bind-Expanded="@sidebarExpanded">
+                    <RadzenPanelMenu>
+                        @foreach (var item in _list)
+                        {
+                            <MyMenuItem Me="item" OnPathChange="ChangePath" />
+                        }
+                    </RadzenPanelMenu>
+                </RadzenSidebar>
+                <RadzenBody>
+                    <div class="rz-p-4">
+                        @Body
+                    </div>
+                </RadzenBody>
+            </RadzenLayout>
+        </CascadingValue>
+    </CascadingValue>
+</CascadingValue>
+
+<div id="blazor-error-ui" data-nosnippet>
+    An unhandled error has occurred.
+    <a href="." class="reload">Reload</a>
+    <span class="dismiss">🗙</span>
+</div>
+
+@code {
+    private List<MenuItem> _list = [];
+    private MenuItem? _selectedValue;
+    private bool sidebarExpanded = false;
+
+    private void ChangePath(MenuItem newItem)
+    {
+        _selectedValue = newItem;
+        StateHasChanged();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        await ScanDirectory();
+    }
+
+    private async Task ScanDirectory()
+    {
+        const string BASEFOLDER = @"\\SpeicherSchwein\Dokumente\DnD Files\Kampagnen\Chrona";
+
+        MenuItem currentDirectory = default!;
+
+        List<string> allowedExtensions = [".md", ".png", ".jpg", ".jpeg", ".webp"];
+        List<string> imageExtensions = [".png", ".jpg", ".jpeg", ".webp"];
+
+        foreach (var str in Directory.GetFiles(BASEFOLDER).Where(e => allowedExtensions.Contains((Path.GetExtension(e) ?? ""))))
+        {
+            _list.Add(new()
+                {
+                    Name = Path.GetFileNameWithoutExtension(str),
+                    Path = str,
+                    Extension = Path.GetExtension(str),
+                    IsFolder = false,
+                    IsPicture = imageExtensions.Contains(Path.GetExtension(str))
+                });
+        }
+
+        foreach (var dir in Directory.GetDirectories(BASEFOLDER).Where(e => !e.Contains(".")))
+        {
+            currentDirectory = new()
+                {
+                    Name = Path.GetFileNameWithoutExtension(dir),
+                    Path = dir,
+                    IsFolder = true
+                };
+            _list.Add(currentDirectory);
+            foreach (var file in Directory.GetFiles(dir).Where(e => allowedExtensions.Contains((Path.GetExtension(e) ?? ""))))
+            {
+                currentDirectory.Items.Add(new()
+                    {
+                        Name = Path.GetFileNameWithoutExtension(file),
+                        Path = file,
+                        Extension = Path.GetExtension(file),
+                        IsFolder = false,
+                        IsPicture = imageExtensions.Contains(Path.GetExtension(file))
+                    });
+            }
+        }
+        await Task.FromResult(true);
+        StateHasChanged();
+    }
+}

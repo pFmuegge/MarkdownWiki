@@ -1,0 +1,27 @@
+﻿<RadzenPanelMenuItem Text="@Me.Name" Icon="@(Me.IsFolder ? "folder" : "")" Click="OnClick">
+    @if (Me.IsFolder)
+    {
+        @foreach (var sub in Me.Items)
+        {
+            <MyMenuItem Me="sub" OnPathChange="OnPathChange" />
+        }
+    }
+</RadzenPanelMenuItem>
+
+@code {
+
+    [CascadingParameter(Name = "MarkdownPath")]
+    public string? MarkdownPath { get; set; }
+
+    [Parameter]
+    public required MenuItem Me { get; set; }
+
+    [Parameter] required public Action<MenuItem> OnPathChange { get; set; }
+
+    private void OnClick()
+    {
+        if (Me.IsFolder) return;
+        OnPathChange?.Invoke(Me);
+    }
+
+}

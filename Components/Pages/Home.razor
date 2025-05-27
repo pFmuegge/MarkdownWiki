@@ -1,0 +1,144 @@
+﻿@page "/"
+@inject NavigationManager Navigation
+
+<PageTitle>@Item?.Name</PageTitle>
+
+@if(Item is not null && Path.GetExtension(Item.Path) == ".md"){
+    <RadzenMarkdown AllowHtml="true" Text="@(GetFileContents())"></RadzenMarkdown>
+}
+else if (Item is not null && imageExtensions.Contains(Path.GetExtension(Item.Path)))
+{
+    <RadzenImage Style="width: 100%;" Path="@($"data:image/jpeg;base64,{Convert.ToBase64String(getImageData(Item))}")" />
+}
+
+@code {
+
+    [CascadingParameter(Name = "MarkdownPath")]
+    public MenuItem? Item { get; set; }
+
+    [CascadingParameter(Name = "MenuItems")]
+    public List<MenuItem>? Items { get; set; }
+
+    [CascadingParameter(Name = "OnPathChange")]
+    public required Action<MenuItem> OnPathChange { get; set; }
+
+    List<string> imageExtensions = [".png", ".jpg", ".jpeg", ".webp"];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        Navigation.LocationChanged += MyLocationChanged;
+    }
+
+    private void MyLocationChanged(object? sender, LocationChangedEventArgs args)
+    {
+        Console.WriteLine(args.Location);
+        Console.WriteLine(Navigation.Uri);
+        Navigation.NavigateTo(args.Location);
+    }
+
+    public void Dispose() => Navigation.LocationChanged -= MyLocationChanged;
+
+    private string GetFileContents()
+    {
+        if (Item is null) return "";
+
+        if (!File.Exists(Item.Path)) return "";
+
+        if (Item.Path == "") return Item.Path;
+
+        string markdown = File.ReadAllText(Item.Path);
+
+        return RefineMarkdown(markdown);
+    }
+
+    private string RefineMarkdown(string markdown){
+
+        if (Items is null) return markdown;
+
+        List<MarkdownToken> tokens = [];
+
+        if (markdown.Split("![[").Length > 1)
+        {
+            foreach (var e in markdown.Split("![[").Skip(1))
+            {
+                tokens.Add(new MarkdownToken(e.Split("]]")[0], true));
+            }
+        }
+
+        if (markdown.Split("[[").Length > 1)
+        {
+            foreach (var e in markdown.Split("[[").Skip(1))
+            {
+                if (!tokens.Any(a => a.Value == e.Split("]]")[0]))
+                    tokens.Add(new MarkdownToken(e.Split("]]")[0], false));
+            }
+        }
+
+        foreach(var t in tokens){
+            var item = GetMenuItem(t.Cleaned);
+            if (item is null) continue;
+
+            if (!t.IsLink)
+            {
+                string newValue = $"""<a href="{item.Path}">{t.Cleaned}</a>""";
+                markdown = markdown.Replace(t.FullValue, newValue);
+            }
+            else
+            {
+                string newValue = $"""<img src="data:image/jpeg;base64,{Convert.ToBase64String(getImageData(item))}" />""";
+                markdown = markdown.Replace(t.FullValue, newValue);
+            }
+
+        }
+
+        return markdown;
+    }
+
+    private MenuItem? GetMenuItem(string token){
+
+        MenuItem? RecursiveSearch(MenuItem root){
+            foreach(var item in root.Items){
+                if (!item.IsFolder)
+                {
+                    if (item.IsPicture && item.Name + item.Extension == token)
+                        return item;
+
+                    if (item.Name == token)
+                        return item;
+                }
+                else
+                {
+                    var result = RecursiveSearch(item);
+                    if (result is not null) return result;
+                }
+            }
+            return null;
+        }
+
+        foreach(var item in Items!){
+            if (!item.IsFolder)
+            {
+                if (item.IsPicture && item.Name + item.Extension == token)
+                    return item;
+
+                if (item.Name == token)
+                    return item;
+            }
+            else{
+                var result = RecursiveSearch(item);
+                if (result is not null) return result;
+            }
+        }
+
+        return null;
+    }
+
+    private byte[] getImageData(MenuItem? me){
+        if (me is null) return [];
+
+        if (!File.Exists(me.Path)) return [];
+
+        return File.ReadAllBytes(me.Path);
+    }
+}
