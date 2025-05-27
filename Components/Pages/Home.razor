@@ -3,12 +3,13 @@
 
 <PageTitle>@Item?.Name</PageTitle>
 
-@if(Item is not null && Path.GetExtension(Item.Path) == ".md"){
+@if (Item is not null && Path.GetExtension(Item.Path) == ".md")
+{
     <RadzenMarkdown AllowHtml="true" Text="@(GetFileContents())"></RadzenMarkdown>
 }
 else if (Item is not null && imageExtensions.Contains(Path.GetExtension(Item.Path)))
 {
-    <RadzenImage Style="width: 100%;" Path="@($"data:image/jpeg;base64,{Convert.ToBase64String(getImageData(Item))}")" />
+    <RadzenImage Style="width: 100%; height: 100vh" Path="@($"data:image/jpeg;base64,{Convert.ToBase64String(getImageData(Item))}")" />
 }
 
 @code {
@@ -52,7 +53,8 @@ else if (Item is not null && imageExtensions.Contains(Path.GetExtension(Item.Pat
         return RefineMarkdown(markdown);
     }
 
-    private string RefineMarkdown(string markdown){
+    private string RefineMarkdown(string markdown)
+    {
 
         if (Items is null) return markdown;
 
@@ -75,7 +77,8 @@ else if (Item is not null && imageExtensions.Contains(Path.GetExtension(Item.Pat
             }
         }
 
-        foreach(var t in tokens){
+        foreach (var t in tokens)
+        {
             var item = GetMenuItem(t.Cleaned);
             if (item is null) continue;
 
@@ -95,10 +98,13 @@ else if (Item is not null && imageExtensions.Contains(Path.GetExtension(Item.Pat
         return markdown;
     }
 
-    private MenuItem? GetMenuItem(string token){
+    private MenuItem? GetMenuItem(string token)
+    {
 
-        MenuItem? RecursiveSearch(MenuItem root){
-            foreach(var item in root.Items){
+        MenuItem? RecursiveSearch(MenuItem root)
+        {
+            foreach (var item in root.Items)
+            {
                 if (!item.IsFolder)
                 {
                     if (item.IsPicture && item.Name + item.Extension == token)
@@ -116,7 +122,8 @@ else if (Item is not null && imageExtensions.Contains(Path.GetExtension(Item.Pat
             return null;
         }
 
-        foreach(var item in Items!){
+        foreach (var item in Items!)
+        {
             if (!item.IsFolder)
             {
                 if (item.IsPicture && item.Name + item.Extension == token)
@@ -125,7 +132,8 @@ else if (Item is not null && imageExtensions.Contains(Path.GetExtension(Item.Pat
                 if (item.Name == token)
                     return item;
             }
-            else{
+            else
+            {
                 var result = RecursiveSearch(item);
                 if (result is not null) return result;
             }
@@ -134,7 +142,8 @@ else if (Item is not null && imageExtensions.Contains(Path.GetExtension(Item.Pat
         return null;
     }
 
-    private byte[] getImageData(MenuItem? me){
+    private byte[] getImageData(MenuItem? me)
+    {
         if (me is null) return [];
 
         if (!File.Exists(me.Path)) return [];
