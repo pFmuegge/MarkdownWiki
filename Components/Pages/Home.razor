@@ -1,5 +1,6 @@
 ﻿@page "/"
 @inject NavigationManager Navigation
+@implements IDisposable
 
 <PageTitle>@Item?.Name</PageTitle>
 
@@ -9,7 +10,7 @@
 }
 else if (Item is not null && imageExtensions.Contains(Path.GetExtension(Item.Path)))
 {
-    <RadzenImage Style="width: 100%; height: 100vh" Path="@($"data:image/jpeg;base64,{Convert.ToBase64String(getImageData(Item))}")" />
+    <RadzenImage Style="height: 85vh;" Path="@($"data:image/jpeg;base64,{Convert.ToBase64String(getImageData(Item))}")" />
 }
 
 @code {
@@ -24,21 +25,35 @@ else if (Item is not null && imageExtensions.Contains(Path.GetExtension(Item.Pat
     public required Action<MenuItem> OnPathChange { get; set; }
 
     List<string> imageExtensions = [".png", ".jpg", ".jpeg", ".webp"];
+    private IDisposable registration;
 
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
-        Navigation.LocationChanged += MyLocationChanged;
     }
 
-    private void MyLocationChanged(object? sender, LocationChangedEventArgs args)
+    protected override void OnAfterRender(bool firstRender)
     {
-        Console.WriteLine(args.Location);
-        Console.WriteLine(Navigation.Uri);
-        Navigation.NavigateTo(args.Location);
+        if (firstRender)
+        {
+            registration = Navigation.RegisterLocationChangingHandler(LocationChangingHandler);
+        }
     }
 
-    public void Dispose() => Navigation.LocationChanged -= MyLocationChanged;
+    private ValueTask LocationChangingHandler(LocationChangingContext args)
+    {
+        TriggerPathChange(args.TargetLocation.Replace($"{Navigation.BaseUri}?p=", ""));
+        args.PreventNavigation();
+        return ValueTask.CompletedTask;
+    }
+
+    public void Dispose() => registration?.Dispose();
+
+    private void TriggerPathChange(string token){
+        var item = GetMenuItem(System.Net.WebUtility.UrlDecode(token));
+        if (item == null) return;
+        OnPathChange?.Invoke(item);
+    }
 
     private string GetFileContents()
     {
@@ -79,12 +94,12 @@ else if (Item is not null && imageExtensions.Contains(Path.GetExtension(Item.Pat
 
         foreach (var t in tokens)
         {
-            var item = GetMenuItem(t.Cleaned);
+            var item = GetMenuItem(System.Net.WebUtility.HtmlDecode(t.Cleaned));
             if (item is null) continue;
 
             if (!t.IsLink)
             {
-                string newValue = $"""<a href="{item.Path}">{t.Cleaned}</a>""";
+                string newValue = $"""<a class="rz-link" id="{t.Value}" href="./?p={t.Cleaned}">{t.Cleaned}</a>""";
                 markdown = markdown.Replace(t.FullValue, newValue);
             }
             else
