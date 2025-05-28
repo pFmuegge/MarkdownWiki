@@ -6,9 +6,9 @@ public class MarkdownToken(string token, bool isLink)
 
     public bool IsLink { get; set; } = isLink;
 
-    public string FullValue => IsLink ? "![[" + Value + "]]" : "[[" + Value + "]]";
+    public string QualifiedValue => IsLink ? "![[" + Value + "]]" : "[[" + Value + "]]";
 
-    public string Cleaned => CleanValue();
+    public string StrippedValue => CleanValue();
 
     public string Refine(List<MenuItem> menuitems)
     {

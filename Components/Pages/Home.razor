@@ -4,13 +4,21 @@
 
 <PageTitle>@Item?.Name</PageTitle>
 
-@if (Item is not null && Path.GetExtension(Item.Path) == ".md")
-{
-    <RadzenMarkdown AllowHtml="true" Text="@(GetFileContents())"></RadzenMarkdown>
-}
-else if (Item is not null && imageExtensions.Contains(Path.GetExtension(Item.Path)))
-{
-    <RadzenImage Style="height: 85vh;" Path="@($"data:image/jpeg;base64,{Convert.ToBase64String(getImageData(Item))}")" />
+
+
+@if(Item is null){
+    <RadzenText TextStyle="TextStyle.DisplayH1">Welcome to Chrona</RadzenText>
+    <RadzenText TextStyle="TextStyle.DisplayH4">Please select a page from the menu to display</RadzenText>
+}else{
+    @if (!Item.IsPicture)
+    {
+        <RadzenText TextStyle="TextStyle.DisplayH3">@Item.Name</RadzenText>
+        <RadzenMarkdown  AllowHtml="true" class="rz-p-12 rz-border" Style="height: 85vh;" Text="@(GetFileContents())"></RadzenMarkdown>
+    }
+    else 
+    {
+        <RadzenImage Style="height: 85vh;" Path="@($"data:image/jpeg;base64,{Convert.ToBase64String(getImageData(Item))}")" />
+    }
 }
 
 @code {
@@ -94,18 +102,18 @@ else if (Item is not null && imageExtensions.Contains(Path.GetExtension(Item.Pat
 
         foreach (var t in tokens)
         {
-            var item = GetMenuItem(System.Net.WebUtility.HtmlDecode(t.Cleaned));
+            var item = GetMenuItem(System.Net.WebUtility.HtmlDecode(t.StrippedValue));
             if (item is null) continue;
 
             if (!t.IsLink)
             {
-                string newValue = $"""<a class="rz-link" id="{t.Value}" href="./?p={t.Cleaned}">{t.Cleaned}</a>""";
-                markdown = markdown.Replace(t.FullValue, newValue);
+                string newValue = $"""<a class="rz-link" id="{t.Value}" href="./?p={t.StrippedValue}">{t.StrippedValue}</a>""";
+                markdown = markdown.Replace(t.QualifiedValue, newValue);
             }
             else
             {
-                string newValue = $"""<img src="data:image/jpeg;base64,{Convert.ToBase64String(getImageData(item))}" />""";
-                markdown = markdown.Replace(t.FullValue, newValue);
+                string newValue = $"""<img height=480 src="data:image/jpeg;base64,{Convert.ToBase64String(getImageData(item))}" />""";
+                markdown = markdown.Replace(t.QualifiedValue, newValue);
             }
 
         }
